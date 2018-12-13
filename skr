@@ -1,25 +1,27 @@
 #!/bin/bash
 
 
-
 tempdir=$(mktemp -d logfiles.XXX)
 cd $tempdir
 
-n=0
-for file in ilpro122.informatik.htw-dresden.de/logs/{auth-fohls.log,auth-ilpro122.log,auth-ipc88.log,auth-ipo51.log}{,.{1,{2..4}.gz}}; do
-	clear
-	n=$(($n+1))
-	echo Downloading files $n/20
-	unzip=$(cat $file | 
-	wget $file 2> /dev/null
-	if test $? -ne 0; then
-		echo "Error: One or more files couldn't be downloaded."
-		rm *; cd .. ; rmdir $tempdir;	
-		exit 1
-	fi
-done
+download(){
+   n=0
+   for file in {auth-fohls.log,auth-ilpro122.log,auth-ipc88.log,auth-ipo51.log}{,.{1,{2..4}.gz}}; do
+      clear
+      n=$(($n+1))
+      echo Downloading file $n/20
+	
+      wget ilpro122.informatik.htw-dresden.de/logs/${file} 2> /dev/null
+      if test $? -ne 0; then return 1; fi
 
-
+      unzip=$(echo $file | grep ".gz" | wc -l)
+      if test $unzip -eq 1; then
+         echo Unzipping file
+         gzip -d $file 2> /dev/null
+         if test $? -ne 0; then return 1; fi
+      fi 
+   done
+} 
 
 
 rm *; cd .. ; rmdir $tempdir;
