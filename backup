@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cp skr ~
+
+exit 0

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd $1
+rm *
+cd ..
+rmdir $1
+
+exit 0
