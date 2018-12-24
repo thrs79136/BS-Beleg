@@ -1,29 +1,101 @@
 #!/bin/bash
 
-
-tempdir=$(mktemp -d logfiles.XXX)
-cd $tempdir
-
+#laedt Dateien herunter und entpackt diese ggf.
 download(){
    n=0
-   for file in {auth-fohls.log,auth-ilpro122.log,auth-ipc88.log,auth-ipo51.log}{,.{1,{2..4}.gz}}; do
+   for file in auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}.gz}}; do
       clear
       n=$(($n+1))
       echo Downloading file $n/20
 	
       wget ilpro122.informatik.htw-dresden.de/logs/${file} 2> /dev/null
-      if test $? -ne 0; then return 1; fi
+      if [ $? -ne 0 ]; then return 1; fi
 
       unzip=$(echo $file | grep ".gz" | wc -l)
-      if test $unzip -eq 1; then
+      if [ $unzip -eq 1 ]; then
          echo Unzipping file
          gzip -d $file 2> /dev/null
-         if test $? -ne 0; then return 1; fi
+         if [ $? -ne 0 ]; then return 1; fi
       fi 
    done
+}
+
+#ein Kommandozeilenparameter
+option1(){
+   #prueft ueber RegEx, ob es sich um eine IP-Adresse handelt
+   isIP=$(echo $1 | grep "\<\(\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\.\)\{3\}\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\>" | wc -l)
+   if [ $isIP -ne 1 ]; then
+      echo "Invalid IP Address"
+      return 1
+   fi
+#for file in *; do
+#   grep "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file
+#done
 } 
 
+option2(){
+   invalid=0
+   if [ "$1" != "ipo51" -a "$1" != "ipc88" -a "$1" != "ilpro122" -a "$1" != "fohls" -a "$1" != "all" ]; then
+      echo "First parameter has to be 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'"
+      invalid=1
+   fi
+   if [ "$2" != "root" -a "$2" != "users" -a "$2" != "login" ]; then
+      echo "Second parameter has to be 'root', 'users' or 'login'"
+      invalid=1
+   fi
 
-rm *; cd .. ; rmdir $tempdir;
+   if [ $invalid -eq 1 ]; then return 1; fi
+   
+   clear
+   echo Analyzing log files...
+   case "$2" in
+   "root")
+      searchKey="Failed password for root"
+      stringNum=4
+   ;;
+   "users")
+      searchKey="Failed password for invalid user"
+      stringNum=4
+   ;;
+   "login")
+      searchKey="Failed password for invalid user"
+      stringNum=6
+   ;;
+   esac
+
+   if [ "$1" == "all" ]; then
+      grep "$searchKey" auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n
+   else
+      grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n
+   fi
+}
+
+########
+#ANFANG#
+########
+
+#prueft gueltige Kmdozeilenparameteranzahl
+if [ $# -eq 0 -o $# -gt 2 ]; then
+   echo Invalid command line parameter number
+   echo -e Option 1: \nFirst parameter: IP Address\n
+   echo -e Option 2: \nFirst parameter: 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'\nSecond parameter: 'root', 'user' or 'login'\n
+   exit 1
+else   
+   #Erstellen eines temporaeren Verzeichnisses
+   #tempdir=$(mktemp -d logfiles.XXX)
+   #cd $tempdir
+   #download
+   cd files
+   #!!!nachher wieder loeschen!!!
+
+   if [ $# -eq 1 ]; then
+      option1 $1
+   elif [ $# -eq 2 ]; then
+      option2 $1 $2
+   fi
+fi
+
+#Loeschen des Verzeichnisses
+#rm *; cd .. ; rmdir $tempdir;
 
 exit 0
