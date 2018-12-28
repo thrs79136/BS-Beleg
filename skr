@@ -29,14 +29,35 @@ option1(){
       return 1
    fi
 
-   dates+=$(for file in *; do
-             grep "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file | cut -c-15 | while read -r line; do date --date="$line" +%s; done | sort -n | sed -n '1p;$p'
-            done)
-   echo "$dates" | sort -n | while read -r line; do date --date=@$line; done | sed -n '1p;$p'
+   #Das erste sowie letzte Datum jeder Datei werden jeweils in einem String gespeichert 
+   mindates=$(for file in *; do
+   grep -m1 "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file | cut -c-15
+done)
+   maxdates=$(for file in *; do
+   tac $file | grep -m1 "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" | cut -c-15
+done)
+
+   #Ueberpruefung auf Vorkommen der IP-Adresse
+   if [ -z "$mindates" ]; then
+      echo "No attacks originated from this IP adress"
+      return 1
+   fi
+
+   #Daten in den Variablen werden sortiert und das fruehste sowie spaeteste herausgefiltert
+   min=$(echo "$mindates" | while read -r line; do
+                         date --date="$line" +%s
+                      done | sort -n | head -n1)
+
+   max=$(echo "$maxdates" | while read -r line; do
+                        date --date="$line" +%s
+                     done  | sort -n | tail -n1)
+
+   echo First try: $(date --date=@$min)
+   echo Last try: $(date --date=@$max)
 }
 
 option2(){
-   #Pruefung, ob die Parameter gueltig sind
+   #Pruefung auf gueltige Parameter
    invalid=0
    if [ "$1" != "ipo51" -a "$1" != "ipc88" -a "$1" != "ilpro122" -a "$1" != "fohls" -a "$1" != "all" ]; then
       echo "First parameter has to be 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'"
@@ -68,8 +89,9 @@ option2(){
    ;;
    esac
 
+   #mehrfaches Vorkommen gleicher IP-Adressen oder Nutzerkennzeichen wird gezaehlt 
    if [ "$1" == "all" ]; then
-      var=$(grep "$searchKey" auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
+      var=$(grep "$searchKey"  auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    else
       var=$(grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    fi
@@ -88,18 +110,18 @@ if [ $# -eq 0 -o $# -gt 2 ]; then
    echo -e Option 2: \nFirst parameter: 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'\nSecond parameter: 'root', 'user' or 'login'\n
    exit 1
 else   
-   #Erstellen eines temporaeren Verzeichnisses
-   #tempdir=$(mktemp -d logfiles.XXX)
-   #cd $tempdir
-   #download
-   cd files
-   #!!!nachher wieder loeschen!!!
+#Erstellen eines temporaeren Verzeichnisses
+#tempdir=$(mktemp -d logfiles.XXX)
+#cd $tempdir
+#download
+cd files
+#!!!nachher wieder loeschen!!!
 
-   if [ $# -eq 1 ]; then
-      option1 $1
-   elif [ $# -eq 2 ]; then
-      option2 $1 $2
-   fi
+if [ $# -eq 1 ]; then
+   option1 $1
+elif [ $# -eq 2 ]; then
+   option2 $1 $2
+fi
 fi
 
 #Loeschen des Verzeichnisses
