@@ -5,7 +5,7 @@ download(){
    n=0
    for file in auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}.gz}}; do
       clear
-      n=$(($n+1))
+      ((n++))
       echo Downloading file $n/20
 	
       wget ilpro122.informatik.htw-dresden.de/logs/${file} 2> /dev/null
@@ -22,18 +22,21 @@ download(){
 
 #ein Kommandozeilenparameter
 option1(){
-   #prueft ueber RegEx, ob es sich um eine IP-Adresse handelt
+   #Pruefung ueber RegEx, ob es sich um eine IP-Adresse handelt
    isIP=$(echo $1 | grep "\<\(\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\.\)\{3\}\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\>" | wc -l)
    if [ $isIP -ne 1 ]; then
       echo "Invalid IP Address"
       return 1
    fi
-#for file in *; do
-#   grep "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file
-#done
-} 
+
+   dates+=$(for file in *; do
+             grep "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file | cut -c-15 | while read -r line; do date --date="$line" +%s; done | sort -n | sed -n '1p;$p'
+            done)
+   echo "$dates" | sort -n | while read -r line; do date --date=@$line; done | sed -n '1p;$p'
+}
 
 option2(){
+   #Pruefung, ob die Parameter gueltig sind
    invalid=0
    if [ "$1" != "ipo51" -a "$1" != "ipc88" -a "$1" != "ilpro122" -a "$1" != "fohls" -a "$1" != "all" ]; then
       echo "First parameter has to be 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'"
@@ -48,6 +51,8 @@ option2(){
    
    clear
    echo Analyzing log files...
+
+   #Zweiter Parameter bestimmt, welche Zeichenketten von Bedeutung sind
    case "$2" in
    "root")
       searchKey="Failed password for root"
@@ -64,10 +69,12 @@ option2(){
    esac
 
    if [ "$1" == "all" ]; then
-      grep "$searchKey" auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n
+      var=$(grep "$searchKey" auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    else
-      grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n
+      var=$(grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    fi
+   clear
+   echo "$var"
 }
 
 ########
