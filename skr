@@ -1,7 +1,7 @@
 #!/bin/bash
 
 allfiles(){
-echo auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}$1}}
+   echo auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}$1}}
 }
 
 #laedt Dateien herunter und entpackt diese ggf.
@@ -15,17 +15,18 @@ download(){
       wget ilpro122.informatik.htw-dresden.de/logs/${file} 2> /dev/null
       if [ $? -ne 0 ]; then return 1; fi
 
-      unzip=$(echo $file | grep ".gz" | wc -l)
+      unzip=$(echo $file | grep ".gz\>" | wc -l)
       if [ $unzip -eq 1 ]; then
          echo Unzipping file
          gzip -d $file 2> /dev/null
          if [ $? -ne 0 ]; then return 1; fi
       fi 
    done
+   clear
 }
 
 rmfiles(){
-rm *; cd ..; rmdir $1
+   rm * 2> /dev/null; cd ..; rmdir $1
 }
 
 #ein Kommandozeilenparameter
@@ -90,7 +91,7 @@ option2(){
 clear
 #prueft gueltige Kmdozeilenparameteranzahl
 if [ $# -eq 0 -o $# -gt 2 ]; then
-   printf "Invalid command line parameter number\n"
+   printf "Invalid number of command line parameters\n"
    printf "Option 1: \nFirst parameter: IP Address\n"
    printf "Option 2: \nFirst parameter: 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'\nSecond parameter: 'root', 'user' or 'login'\n"
    exit 1
@@ -118,21 +119,27 @@ then
 fi
 
 #Erstellen eines temporaeren Verzeichnisses
-#tempdir=$(mktemp -d logfiles.XXX)
-#cd $tempdir
-#download
-cd files
-#!!!nachher wieder loeschen!!!
+tempdir=$(mktemp -d logfiles.XXX)
+cd $tempdir
+download
+if [ $? -eq 1 ]; then
+   echo "One or more files couldn't be downloaded or unzipped"
+   rmfiles $tempdir
+   exit 1
+fi
 
+#benoetigte Funktion wird aufgerufen
 if [ $# -eq 1 ]; then
    option1 $1
+   if [ $? -eq 1 ]; then
+      rmfiles $tempdir
+      exit 1
+   fi
 elif [ $# -eq 2 ]; then
-   echo "argh"
    option2 $1 $2
 fi
 
-
 #Loeschen des Verzeichnisses
-#rm *; cd .. ; rmdir $tempdir;
+rmfiles $tempdir
 
 exit 0
