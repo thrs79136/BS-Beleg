@@ -30,13 +30,6 @@ rm *; cd ..; rmdir $1
 
 #ein Kommandozeilenparameter
 option1(){
-   #Pruefung ueber RegEx, ob es sich um eine IP-Adresse handelt
-   isIP=$(echo $1 | grep "\<\(\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\.\)\{3\}\(25[0-5]\|2[0-4][0-9]\|[01]\?[0-9][0-9]\?\)\>" | wc -l)
-   if [ $isIP -ne 1 ]; then
-      echo "Invalid IP Address"
-      return 1
-   fi
-
    #Das erste sowie letzte Datum jeder Datei werden jeweils in einem String gespeichert 
    mindates=$(for file in `allfiles`; do
    grep -m1 "\(\(Failed password for invalid user\)\|\(Failed password for root\)\).*from $1" $file | cut -c-15
@@ -47,7 +40,7 @@ done)
 
    #Ueberpruefung auf Vorkommen der IP-Adresse
    if [ -z "$mindates" ]; then
-      echo "No attacks originated from this IP adress"
+      echo "No attacks originated from this IP address"
       return 1
    fi
 
@@ -59,26 +52,12 @@ done)
    max=$(echo "$maxdates" | while read -r line; do
                         date --date="$line" +%s
                      done  | sort -n | tail -n1)
-
-   echo First try: $(date --date=@$min)
-   echo Last try: $(date --date=@$max)
+   printf "Entered IP address:\t $1\n"
+   printf "First try:\t\t $(date --date=@$min)\n"
+   printf "Last try:\t\t $(date --date=@$max)\n"
 }
 
 option2(){
-   #Pruefung auf gueltige Parameter
-   invalid=0
-   if [ "$1" != "ipo51" -a "$1" != "ipc88" -a "$1" != "ilpro122" -a "$1" != "fohls" -a "$1" != "all" ]; then
-      echo "First parameter has to be 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'"
-      invalid=1
-   fi
-   if [ "$2" != "root" -a "$2" != "users" -a "$2" != "login" ]; then
-      echo "Second parameter has to be 'root', 'users' or 'login'"
-      invalid=1
-   fi
-
-   if [ $invalid -eq 1 ]; then return 1; fi
-   
-   clear
    echo Analyzing log files...
 
    #Zweiter Parameter bestimmt, welche Zeichenketten herausgefiltert werden sollen
@@ -97,9 +76,9 @@ option2(){
    ;;
    esac
 
-   #mehrfaches Vorkommen gleicher IP-Adressen oder Nutzerkennzeichen wird gezaehlt 
+   #mehrfaches Vorkommen gleicher IP-Adressen oder Nutzerkennzeichen wird gezaehlt, entweder in allen oder oder ausgewaehlten Dateien 
    if [ "$1" == "all" ]; then
-      var=$(grep "$searchKey"  auth-{fohls,ilpro122,ipc88,ipo51}.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
+      var=$(grep "$searchKey"  `allfiles` | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    else
       var=$(grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
    fi
@@ -107,16 +86,13 @@ option2(){
    echo "$var"
 }
 
-########
 #ANFANG#
-########
 clear
-
 #prueft gueltige Kmdozeilenparameteranzahl
 if [ $# -eq 0 -o $# -gt 2 ]; then
-   echo Invalid command line parameter number
-   echo -e Option 1: \nFirst parameter: IP Address\n
-   echo -e Option 2: \nFirst parameter: 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'\nSecond parameter: 'root', 'user' or 'login'\n
+   printf "Invalid command line parameter number\n"
+   printf "Option 1: \nFirst parameter: IP Address\n"
+   printf "Option 2: \nFirst parameter: 'ipo51', 'ipc88', 'ilpro122', 'fohls' or 'all'\nSecond parameter: 'root', 'user' or 'login'\n"
    exit 1
 #Ueberprufung auf gueltige IP-Adresse, falls ein Parameter uebergeben wurde
 elif [ $# -eq 1 ]; then
@@ -139,7 +115,8 @@ then
    fi
    if [ $invalid -eq 1 ]; then exit 1; fi
 
-else   
+fi
+
 #Erstellen eines temporaeren Verzeichnisses
 #tempdir=$(mktemp -d logfiles.XXX)
 #cd $tempdir
@@ -150,9 +127,10 @@ cd files
 if [ $# -eq 1 ]; then
    option1 $1
 elif [ $# -eq 2 ]; then
+   echo "argh"
    option2 $1 $2
 fi
-fi
+
 
 #Loeschen des Verzeichnisses
 #rm *; cd .. ; rmdir $tempdir;
