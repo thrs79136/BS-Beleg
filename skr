@@ -54,40 +54,42 @@ done)
                         date --date="$line" +%s
                      done  | sort -n | tail -n1)
    printf "Entered IP address:\t $1\n"
-   printf "First try:\t\t $(date --date=@$min)\n"
-   printf "Last try:\t\t $(date --date=@$max)\n"
+   printf "First try:\t\t $(date --date=@$min | cut -f-4 -d' ')\n"
+   printf "Last try:\t\t $(date --date=@$max | cut -f-4 -d' ')\n"
 }
 
+#Zwei Parameter
 option2(){
    echo Analyzing log files...
 
-   #Zweiter Parameter bestimmt, welche Zeichenketten herausgefiltert werden sollen
+   #Zweiter Parameter bestimmt, welche Zeichenketten herausgefiltert werden sollen (8 IP-Adresse, 10 Nutzerkennzeichen)
    case "$2" in
    "root")
       searchKey="Failed password for root"
-      stringNum=4
+      stringNum=8
    ;;
    "users")
       searchKey="Failed password for invalid user"
-      stringNum=4
+      stringNum=10
    ;;
    "login")
       searchKey="Failed password for invalid user"
-      stringNum=6
+      stringNum=8
    ;;
    esac
 
-   #mehrfaches Vorkommen gleicher IP-Adressen oder Nutzerkennzeichen wird gezaehlt, entweder in allen oder oder ausgewaehlten Dateien 
+   #mehrfaches Vorkommen gleicher IP-Adressen oder Nutzerkennzeichen wird gezaehlt, entweder in allen oder ausgewaehlten Dateien 
    if [ "$1" == "all" ]; then
-      var=$(grep "$searchKey"  `allfiles` | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
+      var=$(grep -h "$searchKey"  `allfiles`)
    else
-      var=$(grep "$searchKey" auth-$1.log{,.{1,{2..4}}} | rev | cut -f$stringNum -d' ' | rev | sort | uniq -c | sort -n)
+      var=$(grep -h "$searchKey" auth-$1.log{,.{1,{2..4}}})
    fi
    clear
-   echo "$var"
+   echo "$var" | cut -c17- | cut -f$stringNum -d' ' | sort | uniq -c | sort -n
 }
 
-#ANFANG#
+#####ANFANG#####
+
 clear
 #prueft gueltige Kmdozeilenparameteranzahl
 if [ $# -eq 0 -o $# -gt 2 ]; then
@@ -119,7 +121,7 @@ then
 fi
 
 #Erstellen eines temporaeren Verzeichnisses
-tempdir=$(mktemp -d logfiles.XXX)
+tempdir=$(mktemp -d)
 cd $tempdir
 download
 if [ $? -eq 1 ]; then
